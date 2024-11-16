@@ -3,6 +3,9 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import VehicleCard from './VehicleCard';
 import styled from 'styled-components';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';  // Import stylów kalendarza
+
 
 // Styled-components
 const ButtonContainer = styled.div`
@@ -11,8 +14,8 @@ const ButtonContainer = styled.div`
 `;
 
 const UserPageContainer = styled.div`
-  padding: 20px;
-`;
+  padding: 20px;`
+;
 
 const TopSection = styled.div`
   display: flex;
@@ -166,6 +169,68 @@ const CardContainer = styled.div`
   margin-top: 20px;
 `;
 
+const ModalBackground = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+`;
+
+const AppointmentDetails = styled.div`
+  margin-top: 20px;
+  font-size: 16px;
+  color: #01295f;
+`;
+
+// Styled-components
+const TwoColumnLayout = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+`;
+
+const LeftColumn = styled.div`
+  flex: 1;
+  margin-right: 20px;
+`;
+
+const RightColumn = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 20px;
+  color: #01295f;
+  margin-bottom: 10px;
+`;
+
+const StyledCalendar = styled(Calendar)`
+  width: 100%; // Rozciągnij do pełnej szerokości kontenera
+  max-width: 600px; // Maksymalna szerokość
+  font-size: 1.2em; // Powiększenie tekstu i elementów
+`;
+
+
+
+
 function UserPage() {
   const [user, setUser] = useState(null);
   const [cars, setCars] = useState([]);
@@ -192,6 +257,12 @@ function UserPage() {
   const [editingCar, setEditingCar] = useState(null);
   const [editedCar, setEditedCar] = useState({});
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [appointments, setAppointments] = useState([]); // Przechowujemy wizyty
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+
+  
+
+
 
   
   const token = localStorage.getItem('token');
@@ -208,17 +279,22 @@ function UserPage() {
 
     const fetchUserData = async () => {
       try {
-        const [userResponse, carsResponse] = await Promise.all([
+        const [userResponse, carsResponse, appointmentsResponse] = await Promise.all([
           axios.get(`http://localhost:5109/api/user/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`http://localhost:5109/api/user/${userId}/vehicles`, { headers: { Authorization: `Bearer ${token}` } })
+          axios.get(`http://localhost:5109/api/user/${userId}/vehicles`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`http://localhost:5109/api/user/${userId}/records`, { headers: { Authorization: `Bearer ${token}` } }) // Pobranie wizyt
+
         ]);
         setUser(userResponse.data);
         setCars(carsResponse.data);
+        setAppointments(appointmentsResponse.data);
         setEditedUser({
           login: userResponse.data.login,
           email: userResponse.data.email,
           phone: userResponse.data.phone || 'Brak'
         });
+
+        console.log("Appointments:", appointmentsResponse.data);
       } catch (error) {
         console.error("Błąd przy pobieraniu danych użytkownika:", error.response?.data || error.message);
       }
@@ -236,7 +312,7 @@ function UserPage() {
   const handleCarDelete = async (carId) => {
     try {
       await axios.delete(
-        `http://localhost:5109/api/user/${userId}/vehicle/${carId}`,
+        "http://localhost:5109/api/user/${userId}/vehicle/${carId}",
         { headers: { Authorization: `Bearer ${token}` } }
       );
       // Update state directly to remove the car
@@ -251,7 +327,7 @@ function UserPage() {
     e.preventDefault();
     try {
       const response = await axios.put(
-        `http://localhost:5109/api/user/${userId}/vehicle/${editedCar.id}`,
+        "http://localhost:5109/api/user/${userId}/vehicle/${editedCar.id}",
         editedCar,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -275,7 +351,7 @@ function UserPage() {
     e.preventDefault();
     try {
       const response = await axios.put(
-        `http://localhost:5109/api/user/${userId}`,
+        "http://localhost:5109/api/user/${userId}",
         editedUser,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -291,6 +367,24 @@ function UserPage() {
     setEditingCar(null); // Stop editing mode
   };
 
+  const handleDateClick = (date) => {
+    const clickedDate = date.setHours(0, 0, 0, 0); // Ustawiamy godzinę na 00:00:00
+    const appointment = appointments.find((appt) => {
+      const appointmentDate = new Date(appt.recordDate).setHours(0, 0, 0, 0); // Ustawiamy godzinę wizyty na 00:00:00
+      return appointmentDate === clickedDate;
+    });
+    
+    if (appointment) {
+      setSelectedAppointment(appointment);
+    } else {
+      setSelectedAppointment(null);
+    }
+  };
+  
+  
+  
+  
+
   // Handle new car addition
   const handleCarAddSubmit = async (e) => {
     e.preventDefault();
@@ -300,7 +394,7 @@ function UserPage() {
     }
     try {
       const response = await axios.post(
-        `http://localhost:5109/api/user/${userId}/vehicle`,
+        "http://localhost:5109/api/user/${userId}/vehicle",
         newCar,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -322,6 +416,9 @@ function UserPage() {
           <TopSection>
             <WelcomeMessage>Witaj, {user.login}!</WelcomeMessage>
           </TopSection>
+
+          <TwoColumnLayout>
+            <LeftColumn>
 
           {editingUser ? (
             <FormContainer>
@@ -358,7 +455,8 @@ function UserPage() {
             </UserInfoCard>
           )}
 
-<ButtonContainer>
+          
+            <ButtonContainer>
             <DynamicAddCarButton
               onClick={toggleForm} // Zmieniamy przycisk po kliknięciu
               iscancel={iscancel} // Używamy stanu do zmiany stylu i tekstu przycisku
@@ -507,12 +605,51 @@ function UserPage() {
               </form>
             </FormContainer>
           )}
-        </>
+            </LeftColumn>
+
+            <RightColumn>
+              <WelcomeMessage>Twoje wizyty:</WelcomeMessage>
+
+          {/* Wyświetlamy kalendarz */}
+          <div style={{ width: '300px', marginBottom: '30px' }}>
+
+          
+          <StyledCalendar
+            value={new Date()} // Ustawienie bieżącej daty
+            tileClassName={({ date, view }) => {
+              // Sprawdzamy, czy dany dzień ma wizytę
+              if (appointments.some(appointment => new Date(appointment.date).toLocaleDateString() === date.toLocaleDateString())) {
+                return 'highlight'; // Dodajemy klasę CSS dla daty wizyty
+              }
+            }}
+            onClickDay={handleDateClick} // Obsługuje kliknięcie w dzień
+          />
+          
+        </div>
+        
+      
+
+                  {/* Wyświetlamy szczegóły wizyty w przypadku wybranego dnia */}
+                  {selectedAppointment && (
+<ModalBackground onClick={() => setSelectedAppointment(null)}>
+  <ModalContent onClick={(e) => e.stopPropagation()}>
+    <h3>Szczegóły wizyty</h3>
+    <AppointmentDetails>
+      <p><strong>Godzina:</strong> {new Date(selectedAppointment.recordDate).toLocaleTimeString()}</p>
+      <p><strong>Warsztat:</strong> {selectedAppointment.termId}</p>
+      <p><strong>Usługa:</strong> {selectedAppointment.favourId}</p>
+      <p><strong>Pojazd:</strong> {selectedAppointment.vehicleId}</p>
+    </AppointmentDetails>
+  </ModalContent>
+</ModalBackground>
+                  )};
+            </RightColumn>
+          </TwoColumnLayout>
+
+          </>
       )}
     </UserPageContainer>
   );
 }
 
-
 export default UserPage;
-

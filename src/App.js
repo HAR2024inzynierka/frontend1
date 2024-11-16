@@ -76,6 +76,8 @@ const LogoutButton = styled.button`
     cursor: pointer;
     font-weight: bold;
     border-radius: 5px;
+    font-weight: bold;
+    font-size: 16px;
 
     &:hover {
         background: white; /* Jaśniejszy kolor przycisku na hover */
@@ -127,8 +129,8 @@ function App() {
                         {isAuthenticated ? (
                             <>
                                 <NavLink to="/user">Twoje konto</NavLink>
-                                <NavLink to="/workshop">Wybierz warsztat</NavLink>
-                                <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
+                                
+                                <LogoutButton onClick={handleLogout}>Wyloguj</LogoutButton>
                             </>
                         ) : (
                             <>
